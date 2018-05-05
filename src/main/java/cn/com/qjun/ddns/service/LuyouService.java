@@ -53,13 +53,13 @@ public class LuyouService {
         param.put("TYPE", "vlan_data,vlan_total");
         param.put("vlan_internet", 2);
         param.put("interface", "wan1");
-        postData.put("param", param);
+        postData.set("param", param);
         try {
             String resultString = httpService.post(luyouAddress + URL_LUYOU_CALL, postData.toString());
             JsonNode resultNode = objectMapper.readValue(resultString, JsonNode.class);
             String resultMsg = resultNode.get(RESULT_MSG_KEY).asText();
             if (MSG_SUCCESS.contains(resultMsg)) {
-                Map<String, String> ips = new HashMap<>();
+                Map<String, String> ips = new HashMap<>(16);
                 resultNode.get("Data").get("vlan_data").iterator().forEachRemaining(node -> {
                     ips.put(node.get("comment").asText(), node.get("pppoe_ip_addr").asText());
                 });
