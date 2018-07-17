@@ -13,7 +13,7 @@ import java.util.List;
  * @date 2018/7/17
  */
 @Service
-@Transactional(readOnly = true)
+@Transactional(readOnly = true, rollbackFor = Exception.class)
 public class DDNSConfigService {
     @Autowired
     private DDNSRecordConfigRepository recordConfigRepository;

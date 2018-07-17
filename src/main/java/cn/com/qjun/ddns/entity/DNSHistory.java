@@ -1,6 +1,5 @@
 package cn.com.qjun.ddns.entity;
 
-import cn.com.qjun.ddns.support.DNSRecordType;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -23,23 +22,11 @@ public class DNSHistory {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     /**
-     * 域名
-     */
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "domain_id")
-    private DDNSDomainConfig domain;
-    /**
      * 主机记录
      */
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "rr_id")
     private DDNSRecordConfig rr;
-    /**
-     * 记录类型
-     */
-    @Column(name = "record_type", nullable = false)
-    @Enumerated(EnumType.STRING)
-    private DNSRecordType recordType;
     /**
      * 记录值
      */
@@ -54,7 +41,7 @@ public class DNSHistory {
     /**
      * 结束时间
      */
-    @Column(name = "end_time", nullable = false)
+    @Column(name = "end_time")
     @Temporal(TemporalType.TIMESTAMP)
     private Date endTime;
     /**

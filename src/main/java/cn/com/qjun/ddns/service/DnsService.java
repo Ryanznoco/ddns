@@ -1,5 +1,6 @@
 package cn.com.qjun.ddns.service;
 
+import cn.com.qjun.ddns.vo.DNSInfo;
 import com.aliyuncs.IAcsClient;
 import com.aliyuncs.alidns.model.v20150109.AddDomainRecordRequest;
 import com.aliyuncs.alidns.model.v20150109.DescribeDomainRecordsRequest;
@@ -22,28 +23,27 @@ public class DnsService {
     @Autowired
     private IAcsClient iAcsClient;
 
-    public void addRecord(String domainName, String rr, String value) throws ClientException {
+    public void addRecord(DNSInfo dnsInfo) throws ClientException {
         AddDomainRecordRequest request = new AddDomainRecordRequest();
-        request.setDomainName(domainName);
-        request.setRR(rr);
-        request.setType(TYPE_A);
-        request.setValue(value);
+        request.setDomainName(dnsInfo.getDomainName());
+        request.setRR(dnsInfo.getRr());
+        request.setType(dnsInfo.getRecordType().getValue());
+        request.setValue(dnsInfo.getValue());
         iAcsClient.getAcsResponse(request);
     }
 
-    public void updateRecord(String recordId, String rr, String value) throws ClientException {
+    public void updateRecord(String recordId, DNSInfo dnsInfo) throws ClientException {
         UpdateDomainRecordRequest request = new UpdateDomainRecordRequest();
         request.setRecordId(recordId);
-        request.setRR(rr);
-        request.setType(TYPE_A);
-        request.setValue(value);
+        request.setRR(dnsInfo.getRr());
+        request.setType(dnsInfo.getRecordType().getValue());
+        request.setValue(dnsInfo.getValue());
         iAcsClient.getAcsResponse(request);
     }
 
     public List<DescribeDomainRecordsResponse.Record> getRecordList(String domainName) throws ClientException {
         DescribeDomainRecordsRequest request = new DescribeDomainRecordsRequest();
         request.setDomainName(domainName);
-        request.setTypeKeyWord(TYPE_A);
         DescribeDomainRecordsResponse recordsResponse = iAcsClient.getAcsResponse(request);
         return recordsResponse.getDomainRecords();
     }

@@ -1,18 +1,15 @@
 package cn.com.qjun.ddns.service;
 
 import cn.com.qjun.ddns.vo.PPPoEInfo;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * @author Ryan
@@ -22,7 +19,6 @@ import java.util.Map;
 @Service
 public class LuyouService {
     private static final String MSG_SUCCESS = "\"Succeess\",\"Success\"";
-    private static final String RESULT_CODE_KEY = "Result";
     private static final String RESULT_MSG_KEY = "ErrMsg";
     private static final String URL_LUYOU_LOGIN = "/Action/login";
     private static final String URL_LUYOU_CALL = "/Action/call";
@@ -41,7 +37,7 @@ public class LuyouService {
         if (!logged || !checkLogin()) {
             logged = luyouLogin();
         }
-        return logged ? getLuyouPPPoEInfo() : null;
+        return logged ? getLuyouPPPoEInfo() : new ArrayList<>();
     }
 
     /**
@@ -50,33 +46,33 @@ public class LuyouService {
      * @return
      */
     private List<PPPoEInfo> getLuyouPPPoEInfo() {
-        ObjectMapper objectMapper = new ObjectMapper();
-        ObjectNode postData = objectMapper.createObjectNode();
+        JSONObject postData = new JSONObject();
         postData.put("func_name", "wan");
         postData.put("action", "show");
-        ObjectNode param = objectMapper.createObjectNode();
+        JSONObject param = new JSONObject();
         param.put("TYPE", "vlan_data,vlan_total");
         param.put("vlan_internet", 2);
         param.put("interface", "wan1");
-        postData.set("param", param);
+        postData.put("param", param);
         try {
             String resultString = httpService.post(luyouAddress + URL_LUYOU_CALL, postData.toString());
-            JsonNode resultNode = objectMapper.readValue(resultString, JsonNode.class);
-            String resultMsg = resultNode.get(RESULT_MSG_KEY).asText();
+            JSONObject resultData = JSON.parseObject(resultString);
+            String resultMsg = resultData.getString(RESULT_MSG_KEY);
             if (MSG_SUCCESS.contains(resultMsg)) {
                 List<PPPoEInfo> ppPoEInfos = new ArrayList<>();
-                resultNode.get("Data").get("vlan_data").iterator().forEachRemaining(node -> {
+                resultData.getJSONObject("Data").getJSONArray("vlan_data").iterator().forEachRemaining(node -> {
+                    JSONObject item = (JSONObject) node;
                     PPPoEInfo ppPoEInfo = new PPPoEInfo();
-                    ppPoEInfo.setName(node.get("name").asText());
-                    ppPoEInfo.setAccount(node.get("account").asText());
-                    ppPoEInfo.setIpAddress(node.get("pppoe_ip_addr").asText());
-                    ppPoEInfo.setRemark(node.get("comment").asText());
+                    ppPoEInfo.setName(item.getString("vlan_name"));
+                    ppPoEInfo.setAccount(item.getString("username"));
+                    ppPoEInfo.setIpAddress(item.getString("pppoe_ip_addr"));
+                    ppPoEInfo.setRemark(item.getString("comment"));
                     ppPoEInfos.add(ppPoEInfo);
                 });
                 log.info("获取网口拨号信息成功：{}", ppPoEInfos);
                 return ppPoEInfos;
             }
-            log.error("请求网口数据失败：{}, {}", resultNode.get(RESULT_CODE_KEY), resultMsg);
+            log.error("请求网口数据失败：{}", resultString);
         } catch (Exception e) {
             log.error("请求失败：" + e.getMessage(), e);
         }
@@ -89,6 +85,19 @@ public class LuyouService {
      * @return
      */
     private boolean checkLogin() {
+        JSONObject postData = JSON.parseObject("{\"func_name\":\"dhcp_server\",\"action\":\"show\",\"param\":{\"TYPE\":\"dhcp_available_num\"}}");
+        try {
+            String resultString = httpService.post(luyouAddress + URL_LUYOU_CALL, postData.toString());
+            JSONObject resultData = JSON.parseObject(resultString);
+            String resultMsg = resultData.getString(RESULT_MSG_KEY);
+            if (MSG_SUCCESS.contains(resultMsg)) {
+                log.info("登录验证成功");
+                return true;
+            }
+            log.error("登录验证失败：{}", resultString);
+        } catch (Exception e) {
+            log.error("请求失败：" + e.getMessage(), e);
+        }
         return false;
     }
 
@@ -98,20 +107,19 @@ public class LuyouService {
      * @return
      */
     private boolean luyouLogin() {
-        ObjectMapper objectMapper = new ObjectMapper();
-        ObjectNode postData = objectMapper.createObjectNode();
+        JSONObject postData = new JSONObject();
         postData.put("username", luyouUserName);
         postData.put("passwd", luyouPassword);
         String postString = postData.toString();
         try {
             String loginResult = httpService.post(luyouAddress + URL_LUYOU_LOGIN, postString);
-            ObjectNode resultNode = objectMapper.readValue(loginResult, ObjectNode.class);
-            String resultMsg = resultNode.get(RESULT_MSG_KEY).toString();
+            JSONObject resultData = JSON.parseObject(loginResult);
+            String resultMsg = resultData.getString(RESULT_MSG_KEY);
             if (MSG_SUCCESS.contains(resultMsg)) {
                 log.info("登录路由器成功：{}", luyouUserName);
                 return true;
             }
-            log.error("登录路由器失败：{}, {}", resultNode.get(RESULT_CODE_KEY), resultMsg);
+            log.error("登录路由器失败：{}", loginResult);
         } catch (Exception e) {
             log.error("请求失败：" + e.getMessage(), e);
         }

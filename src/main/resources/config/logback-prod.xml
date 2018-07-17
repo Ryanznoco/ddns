@@ -16,7 +16,9 @@
         </encoder>
     </appender>
 
-    <root level="INFO">
+    <root level="WARN">
         <appender-ref ref="file"/>
     </root>
+    <logger name="cn.com.qjun.ddns.schedule.DnsJob" level="INFO"></logger>
+    <logger name="cn.com.qjun.ddns.service.LuyouService" level="INFO"></logger>
 </configuration>

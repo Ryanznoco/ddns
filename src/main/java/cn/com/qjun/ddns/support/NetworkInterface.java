@@ -8,9 +8,9 @@ import lombok.Getter;
  */
 @Getter
 public enum NetworkInterface {
-    WAN1("wan1"),
-    WAN2("wan2"),
-    WAN3("wan3");
+    WAN1("adsl1"),
+    WAN2("adsl2"),
+    WAN3("adsl3");
 
     private String name;
 
