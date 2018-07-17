@@ -1,5 +1,6 @@
 package cn.com.qjun.ddns.service;
 
+import cn.com.qjun.ddns.vo.PPPoEInfo;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -8,7 +9,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -34,17 +37,19 @@ public class LuyouService {
     private String luyouPassword;
     private boolean logged = false;
 
-    public Map<String, String> getPublicIps() {
-        if (!logged && luyouLogin()) {
-            logged = true;
+    public List<PPPoEInfo> getAllPPPoEInfo() {
+        if (!logged || !checkLogin()) {
+            logged = luyouLogin();
         }
-        if (logged) {
-            return getIpFromLuyou();
-        }
-        return null;
+        return logged ? getLuyouPPPoEInfo() : null;
     }
 
-    private Map<String, String> getIpFromLuyou() {
+    /**
+     * 获取路由器网口的拨号信息
+     *
+     * @return
+     */
+    private List<PPPoEInfo> getLuyouPPPoEInfo() {
         ObjectMapper objectMapper = new ObjectMapper();
         ObjectNode postData = objectMapper.createObjectNode();
         postData.put("func_name", "wan");
@@ -59,19 +64,39 @@ public class LuyouService {
             JsonNode resultNode = objectMapper.readValue(resultString, JsonNode.class);
             String resultMsg = resultNode.get(RESULT_MSG_KEY).asText();
             if (MSG_SUCCESS.contains(resultMsg)) {
-                Map<String, String> ips = new HashMap<>(16);
+                List<PPPoEInfo> ppPoEInfos = new ArrayList<>();
                 resultNode.get("Data").get("vlan_data").iterator().forEachRemaining(node -> {
-                    ips.put(node.get("comment").asText(), node.get("pppoe_ip_addr").asText());
+                    PPPoEInfo ppPoEInfo = new PPPoEInfo();
+                    ppPoEInfo.setName(node.get("name").asText());
+                    ppPoEInfo.setAccount(node.get("account").asText());
+                    ppPoEInfo.setIpAddress(node.get("pppoe_ip_addr").asText());
+                    ppPoEInfo.setRemark(node.get("comment").asText());
+                    ppPoEInfos.add(ppPoEInfo);
                 });
-                return ips;
+                log.info("获取网口拨号信息成功：{}", ppPoEInfos);
+                return ppPoEInfos;
             }
             log.error("请求网口数据失败：{}, {}", resultNode.get(RESULT_CODE_KEY), resultMsg);
         } catch (Exception e) {
-            log.error("请求失败：{}", e.getMessage());
+            log.error("请求失败：" + e.getMessage(), e);
         }
-        return null;
+        return new ArrayList<>();
     }
 
+    /**
+     * 检查登录是否仍有效
+     *
+     * @return
+     */
+    private boolean checkLogin() {
+        return false;
+    }
+
+    /**
+     * 使用用户名和密码登录路由器
+     *
+     * @return
+     */
     private boolean luyouLogin() {
         ObjectMapper objectMapper = new ObjectMapper();
         ObjectNode postData = objectMapper.createObjectNode();
@@ -83,11 +108,12 @@ public class LuyouService {
             ObjectNode resultNode = objectMapper.readValue(loginResult, ObjectNode.class);
             String resultMsg = resultNode.get(RESULT_MSG_KEY).toString();
             if (MSG_SUCCESS.contains(resultMsg)) {
+                log.info("登录路由器成功：{}", luyouUserName);
                 return true;
             }
             log.error("登录路由器失败：{}, {}", resultNode.get(RESULT_CODE_KEY), resultMsg);
         } catch (Exception e) {
-            log.error("请求失败：{}", e.getMessage());
+            log.error("请求失败：" + e.getMessage(), e);
         }
         return false;
     }

@@ -8,13 +8,23 @@ import lombok.Getter;
  */
 @Getter
 public enum NetworkInterface {
-    ASDL1("asdl1"),
-    ASDL2("asdl2"),
-    ASDL3("asdl3");
+    WAN1("wan1"),
+    WAN2("wan2"),
+    WAN3("wan3");
 
     private String name;
 
     NetworkInterface(String name) {
         this.name = name;
+    }
+
+    public static NetworkInterface nameOf(String name) {
+        for (NetworkInterface ni :
+                NetworkInterface.values()) {
+            if (ni.getName().equals(name)) {
+                return ni;
+            }
+        }
+        return null;
     }
 }

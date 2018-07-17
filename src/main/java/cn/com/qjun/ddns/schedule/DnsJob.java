@@ -1,7 +1,13 @@
 package cn.com.qjun.ddns.schedule;
 
+import cn.com.qjun.ddns.entity.DDNSRecordConfig;
+import cn.com.qjun.ddns.entity.PPPoEHistory;
+import cn.com.qjun.ddns.service.DDNSConfigService;
 import cn.com.qjun.ddns.service.DnsService;
 import cn.com.qjun.ddns.service.LuyouService;
+import cn.com.qjun.ddns.service.PPPoEHistoryService;
+import cn.com.qjun.ddns.support.NetworkInterface;
+import cn.com.qjun.ddns.vo.PPPoEInfo;
 import com.aliyuncs.alidns.model.v20150109.DescribeDomainRecordsResponse;
 import com.aliyuncs.exceptions.ClientException;
 import lombok.extern.slf4j.Slf4j;
@@ -28,9 +34,19 @@ public class DnsJob {
     private DnsService dnsService;
     @Autowired
     private LuyouService luyouService;
+    @Autowired
+    private DDNSConfigService ddnsConfigService;
+    @Autowired
+    private PPPoEHistoryService ppPoEHistoryService;
 
     public void execute() {
         log.info("域名解析更新任务开始执行！");
+        List<DDNSRecordConfig> recordConfigs = ddnsConfigService.findAllAvailable();
+        List<PPPoEInfo> ppPoEInfoList = luyouService.getAllPPPoEInfo();
+        Map<NetworkInterface, String> wanIpMap = buildWanIpMap(ppPoEInfoList);
+        Map<NetworkInterface, PPPoEHistory> currentPPPoEMap = ppPoEHistoryService.findCurrentByInterface(wanIpMap.keySet());
+
+
         Map<String, Map<String, String>> dnsMap = getDnsList();
         for (Map.Entry<String, Map<String, String>> entry :
                 dnsMap.entrySet()) {
@@ -76,8 +92,17 @@ public class DnsJob {
         log.info("域名解析更新任务执行完毕！");
     }
 
+    private Map<NetworkInterface, String> buildWanIpMap(List<PPPoEInfo> ppPoEInfoList) {
+        Map<NetworkInterface, String> wanIpMap = new HashMap<>(16);
+        for (PPPoEInfo ppPoEInfo :
+                ppPoEInfoList) {
+            wanIpMap.put(NetworkInterface.nameOf(ppPoEInfo.getName()), ppPoEInfo.getIpAddress());
+        }
+        return wanIpMap;
+    }
+
     private Map<String, Map<String, String>> getDnsList() {
-        Map<String, String> ipMap = luyouService.getPublicIps();
+        Map<String, String> ipMap = new HashMap<>();
         String regex = "(?<=\\()([^)]+)(?=\\))";
         Pattern pattern = Pattern.compile(regex);
         Map<String, Map<String, String>> dnsMap = new HashMap<>(16);
